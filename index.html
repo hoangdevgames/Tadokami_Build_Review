@@ -90,35 +90,6 @@
             z-index: 2147483647;
             pointer-events: none;
         }
-        
-        /* Token button style */
-        #token-button {
-            position: fixed;
-            right: 8px;
-            bottom: 25px;
-            z-index: 2147483647;
-            background: rgba(0, 0, 0, 0.7);
-            color: rgba(255, 255, 255, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 4px;
-            padding: 4px 8px;
-            font-size: 10px;
-            font-family: Arial, sans-serif;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            mix-blend-mode: difference;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-        }
-        
-        #token-button:hover {
-            background: rgba(0, 0, 0, 0.9);
-            color: rgba(255, 255, 255, 1);
-            border-color: rgba(255, 255, 255, 0.6);
-        }
-        
-        #token-button:active {
-            transform: scale(0.95);
-        }
     </style>
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes, viewport-fit=cover">
 </head>
@@ -134,7 +105,6 @@
     <div id="unity-warning"></div>
 </div>
 <canvas id="version-canvas"></canvas>
-<button id="token-button" onclick="showAndCopyToken()">Get Token</button>
 
 <script>
     console.log("Script started");
@@ -696,81 +666,6 @@
             if (typeof liff !== 'undefined' && isLiffInitialized && liff.isLoggedIn()) {
                 console.log("LIFF is ready on iOS");
             }
-        }
-    }
-    
-    // Function to show and copy LIFF token
-    async function showAndCopyToken() {
-        try {
-            console.log("Getting LIFF token...");
-            
-            // Check if LIFF is available
-            if (typeof liff === 'undefined') {
-                alert("LIFF SDK not available");
-                return;
-            }
-            
-            // Check if user is logged in
-            if (!liff.isLoggedIn()) {
-                alert("User not logged in");
-                return;
-            }
-            
-            // Get ID token
-            let token = "";
-            try {
-                token = await liff.getIDToken();
-                console.log("ID Token received:", token);
-            } catch (idTokenError) {
-                console.log("ID Token failed, trying access token:", idTokenError);
-                
-                // Fallback to access token
-                try {
-                    token = liff.getAccessToken();
-                    console.log("Access token received:", token);
-                } catch (accessError) {
-                    console.error("Error getting access token:", accessError);
-                    alert("Failed to get token: " + accessError.message);
-                    return;
-                }
-            }
-            
-            if (!token) {
-                alert("No token available");
-                return;
-            }
-            
-            // Copy to clipboard
-            try {
-                await navigator.clipboard.writeText(token);
-                console.log("Token copied to clipboard");
-                
-                // Show success message
-                const button = document.getElementById('token-button');
-                const originalText = button.textContent;
-                button.textContent = "Copied!";
-                button.style.background = "rgba(0, 255, 0, 0.7)";
-                button.style.color = "rgba(255, 255, 255, 1)";
-                
-                // Reset button after 2 seconds
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.style.background = "rgba(0, 0, 0, 0.7)";
-                    button.style.color = "rgba(255, 255, 255, 0.8)";
-                }, 2000);
-                
-                // Also show token in console for debugging
-                console.log("Token (first 50 chars):", token.substring(0, 50) + "...");
-                
-            } catch (clipboardError) {
-                console.error("Failed to copy to clipboard:", clipboardError);
-                // Fallback: show token in alert
-                alert("Token: " + token.substring(0, 100) + "...\n\n(First 100 characters shown - check console for full token)");
-            }
-            
-        } catch (error) {
-            console.error("Error getting token:", error);
-            alert("Error getting token: " + error.message);
         }
     }
 </script>
