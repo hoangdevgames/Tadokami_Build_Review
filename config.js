@@ -10,7 +10,7 @@
 // Để thay đổi config, chỉ cần sửa file này và không cần rebuild Unity
 window.GameConfig = {
     liff: {
-        liffId: "2007739329-YvLZ466r",
+        liffId: "2007739328-AXQNennQ",
         withLoginOnExternalBrowser: true
     },
     firebase: {

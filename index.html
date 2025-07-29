@@ -170,6 +170,36 @@
         });
     }
     
+    // Thêm hàm tập trung để gửi data cho Unity
+    function sendDataToUnity(dataType, data) {
+        if (unityInstance && unityInstance.SendMessage) {
+            try {
+                unityInstance.SendMessage("__[ST]_WebGLBridge", dataType, data);
+                console.log(`Data sent to Unity - ${dataType}:`, data);
+            } catch (error) {
+                console.error(`Error sending ${dataType} to Unity:`, error);
+            }
+        } else {
+            console.log(`Unity not ready for ${dataType}, storing for later`);
+            // Có thể lưu vào queue để gửi sau
+            if (!window.pendingUnityMessages) {
+                window.pendingUnityMessages = [];
+            }
+            window.pendingUnityMessages.push({ type: dataType, data: data });
+        }
+    }
+
+    // Hàm gửi tất cả pending messages khi Unity sẵn sàng
+    function sendPendingMessagesToUnity() {
+        if (window.pendingUnityMessages && window.pendingUnityMessages.length > 0) {
+            console.log("Sending pending messages to Unity");
+            window.pendingUnityMessages.forEach(msg => {
+                sendDataToUnity(msg.type, msg.data);
+            });
+            window.pendingUnityMessages = [];
+        }
+    }
+
     // LINE LIFF SDK Initialization
     async function initializeSDK() {
         try {
@@ -217,22 +247,61 @@
                 }
             }
             
-            // Get URL parameters for Line
+            // Get URL parameters for Line - VỚI LOGIC XỬ LÝ MỞ RỘNG
             const urlParams = new URLSearchParams(window.location.search);
             const startParam = urlParams.get('startParam');
             if (startParam) {
                 console.log('Start parameter:', startParam);
                 const paramsArray = startParam.split('__');
+                
                 for (const param of paramsArray) {
                     if (param.startsWith('invite_')) {
                         const inviteCode = param.split('_')[1];
                         console.log('Invite Code:', inviteCode);
+                        sendDataToUnity("OnInviteCodeReceived", inviteCode);
                     }
                     else if(param.startsWith('fslid_')) {
                         const fslBindingCode = param.split('_')[1];
                         console.log('FSL Binding Code:', fslBindingCode);
+                        sendDataToUnity("OnFSLBindingCodeReceived", fslBindingCode);
+                    }
+                    else if (param.startsWith('source_')) {
+                        const source = param.split('_')[1];
+                        console.log('Source:', source);
+                        sendDataToUnity("OnAdsSourceReceived", source);
+                    }
+                    else if (param.startsWith('campaign_')) {
+                        const campaign = param.split('_')[1];
+                        console.log('Campaign:', campaign);
+                        sendDataToUnity("OnCampaignReceived", campaign);
+                    }
+                    else if (param.startsWith('taskID_')) {
+                        const taskId = param.split('_')[1];
+                        console.log('Task ID:', taskId);
+                        window.currentTaskId = taskId;
+                    }
+                    else if (param.startsWith('minD_')) {
+                        const minDuration = param.split('_')[1];
+                        console.log('Min Duration:', minDuration);
+                        
+                        if (window.currentTaskId) {
+                            const taskData = {
+                                taskId: parseInt(window.currentTaskId),
+                                duration: parseFloat(minDuration)
+                            };
+                            sendDataToUnity("OnTaskReceived", JSON.stringify(taskData));
+                            console.log("Task data sent to ExternalTaskManager:", taskData);
+                            delete window.currentTaskId;
+                        } else {
+                            console.log("Missing taskId for minDuration:", minDuration);
+                        }
+                    }
+                    else {
+                        console.log('Unknown parameter type:', param);
                     }
                 }
+            } else {
+                console.log("No startParam found in URL");
             }
             
         } catch (error) {
@@ -484,27 +553,8 @@
                 // Mark Unity as loaded
                 isUnityLoaded = true;
                 
-                // REMOVE THIS ENTIRE BLOCK - Let Unity handle token retrieval
-                // setTimeout(() => {
-                //     console.log("Attempting to send token after delay");
-                //     try {
-                //         // Test connection first
-                //         instance.SendMessage("__[ST]_WebGLBridge", "TestConnection");
-                //         console.log("Test connection successful");
-                //         
-                //         // Get and send token
-                //         const token = getLoginToken();
-                //         if (token) {
-                //             instance.SendMessage("__[ST]_WebGLBridge", "OnLoginTokenReceived", token);
-                //             console.log("Token sent to Unity:", token);
-                //         } else {
-                //             instance.SendMessage("__[ST]_WebGLBridge", "OnLoginTokenReceived", "");
-                //             console.log("No token found in URL, sending default");
-                //         }
-                //     } catch (error) {
-                //         console.error("Error sending message to Unity:", error);
-                //     }
-                // }, 2000);
+                // Gửi tất cả pending messages nếu có
+                sendPendingMessagesToUnity();
 
             }).catch((message) => {
                 console.error("Unity creation error:", message);
@@ -513,28 +563,6 @@
 
         document.body.appendChild(script);
     }
-
-    // REMOVE THIS FUNCTION - Let LineBridge.jslib handle token retrieval
-    // function getLoginToken() {
-    //     console.log("Current URL:", window.location.href);
-    //     const queryString = window.location.search.substring(1);
-    //     console.log("Full query string:", queryString);
-    //     
-    //     // Return stored LIFF token if available
-    //     if (liffToken) {
-    //         console.log("Returning stored LIFF token");
-    //         return liffToken;
-    //     }
-    //     
-    //     // Return URL query string as fallback
-    //     if (queryString) {
-    //         console.log("Returning URL query string as token");
-    //         return queryString;
-    //     }
-    //     
-    //     console.log("No token available");
-    //     return null;
-    // }
 
     // Add orientation change handler for mobile devices
     window.addEventListener('orientationchange', function() {
